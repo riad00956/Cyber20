@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber 20 UN</title>
+
+    <!-- libs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --bg: #020617;
+            --purple: #8b5cf6;
+            --blue: #3b82f6;
+            --cyan: #06b6d4;
+            --text: #f8fafc;
+            --glass: rgba(15, 23, 42, 0.6);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        .light-mode {
+            --bg: #f1f5f9;
+            --purple: #6366f1;
+            --blue: #2563eb;
+            --text: #0f172a;
+            --glass: rgba(255, 255, 255, 0.7);
+            --border: rgba(0, 0, 0, 0.1);
+        }
+
+        * { box-sizing: border-box; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            filter: blur(2px);
+        }
+
+        .container {
+            max-width: 850px;
+            margin: auto;
+            padding: 25px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cyber-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--purple), var(--blue));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+            animation: logo-float 3s ease-in-out infinite;
+        }
+
+        @keyframes logo-float {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        input, textarea {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 16px;
+            border-radius: 18px;
+            width: 100%;
+            font-family: 'Fira Code', monospace;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--purple), var(--blue));
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #terminal {
+            background: #000;
+            color: #a5f3fc;
+            height: 240px;
+            overflow-y: auto;
+            padding: 18px;
+            border-radius: 18px;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+            font-size: 13px;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+
+<body>
+<canvas id="bgCanvas"></canvas>
+
+<div class="container">
+
+    <header class="header">
+        <div class="logo-container">
+            <div class="cyber-logo">
+                <i data-lucide="terminal"></i>
+            </div>
+            <h2>Cyber 20 UN</h2>
+        </div>
+    </header>
+
+    <main>
+        <div class="card">
+            <input id="filename" placeholder="main.py">
+            <textarea id="code" placeholder="# Start your magic here..."></textarea>
+            <button class="btn" onclick="runCode()">
+                <i data-lucide="play-circle"></i> Save & Deploy
+            </button>
+        </div>
+
+        <div class="card">
+            <div id="terminal"></div>
+            <input id="cmd" placeholder="pip install flask">
+            <button class="btn" onclick="sendCommand()">
+                <i data-lucide="chevron-right"></i>
+            </button>
+        </div>
+    </main>
+</div>
+
+<footer class="footer">
+    © 2026 CyberIDE
+</footer>
+
+<script>
+    lucide.createIcons();
+
+    /* SOCKET */
+    const socket = io();
+    const terminal = document.getElementById("terminal");
+
+    socket.on("log", msg => {
+        terminal.innerHTML += msg + "<br>";
+        terminal.scrollTop = terminal.scrollHeight;
+    });
+
+    function runCode() {
+        socket.emit("save_and_run", {
+            filename: document.getElementById("filename").value,
+            code: document.getElementById("code").value
+        });
+    }
+
+    function sendCommand() {
+        socket.emit("execute_command", {
+            command: document.getElementById("cmd").value
+        });
+        document.getElementById("cmd").value = "";
+    }
+</script>
+
+<script>
+    /* BACKGROUND PARTICLES (unchanged) */
+    const canvas = document.getElementById("bgCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    let balls = Array.from({length:30},()=>({
+        x:Math.random()*canvas.width,
+        y:Math.random()*canvas.height,
+        r:Math.random()*4+2,
+        s:Math.random()*1+0.5
+    }));
+
+    function animate(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        balls.forEach(b=>{
+            b.y+=b.s;
+            if(b.y>canvas.height) b.y=0;
+            ctx.beginPath();
+            ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+            ctx.fillStyle="#8b5cf6";
+            ctx.fill();
+        });
+        requestAnimationFrame(animate);
+    }
+    animate();
+</script>
+
+</body>
+  </html>
