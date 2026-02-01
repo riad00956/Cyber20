@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: cyber-20-un
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --worker-class eventlet -w 1
